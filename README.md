@@ -259,11 +259,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 👨‍💻 **Developer**
 
-**[Your Name]**
-- Portfolio: [your-portfolio.com](https://your-portfolio.com)
-- LinkedIn: [linkedin.com/in/yourprofile](https://linkedin.com/in/yourprofile)
-- GitHub: [github.com/yourusername](https://github.com/yourusername)
-- Email: your.email@example.com
+**Adane Moges**
+- Portfolio: [portfolio.adanemoges.me](https://your-portfolio.com)
 
 ---
 
