@@ -2,11 +2,11 @@
 
 A sophisticated web application that uses **Retrieval-Augmented Generation (RAG)** technology to automatically generate high-quality multiple-choice questions from uploaded documents. Built with modern React, TypeScript, and AI-powered content analysis.
 
-![AI MCQ Generator](https://images.pexels.com/photos/8386440/pexels-photo-8386440.jpeg?auto=compress&cs=tinysrgb&w=1200&h=600&fit=crop)
+![AI MCQ Generator](./dist/assets/image.png)
 
 ## 🌟 **Live Demo**
 
-[**Try the Application**](https://your-deployed-url.netlify.app) *(Replace with your actual deployment URL)*
+[**Try the Application**](rag-mcq.netlify.app) *(Replace with your actual deployment URL)*
 
 ## 📋 **Table of Contents**
 
