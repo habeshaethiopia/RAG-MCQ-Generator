@@ -2,7 +2,7 @@
 
 A sophisticated web application that uses **Retrieval-Augmented Generation (RAG)** technology to automatically generate high-quality multiple-choice questions from uploaded documents. Built with modern React, TypeScript, and AI-powered content analysis.
 
-![AI MCQ Generator](./dist/assets/image.png)
+![AI MCQ Generator](./docs/image.png)
 
 ## 🌟 **Live Demo**
 
