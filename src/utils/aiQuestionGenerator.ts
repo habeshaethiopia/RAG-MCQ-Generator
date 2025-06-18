@@ -52,7 +52,7 @@ export class AIQuestionGenerator {
     // Simulate AI processing with enhanced rule-based generation
     // This demonstrates the RAG concept using document chunks
     
-    console.log('🤖 Generating questions with Local AI simulation...');
+    console.log(`🤖 Generating exactly ${questionCount} questions with Local AI simulation...`);
     
     // Step 1: Document Chunking (RAG Retrieval phase)
     const chunks = this.chunkDocument(text);
@@ -64,7 +64,7 @@ export class AIQuestionGenerator {
     
     // Step 3: Question Generation (RAG Generation phase)
     const questions = await this.generateFromChunks(analyzedChunks, questionCount);
-    console.log(`✅ Generated ${questions.length} AI-powered questions`);
+    console.log(`✅ Generated exactly ${questions.length} AI-powered questions`);
     
     return questions;
   }
@@ -75,9 +75,9 @@ export class AIQuestionGenerator {
     const chunks: string[] = [];
     
     // Create overlapping chunks of 3-5 sentences
-    for (let i = 0; i < sentences.length; i += 3) {
-      const chunk = sentences.slice(i, i + 5).join('. ').trim();
-      if (chunk.length > 100) {
+    for (let i = 0; i < sentences.length; i += 2) {
+      const chunk = sentences.slice(i, i + 4).join('. ').trim();
+      if (chunk.length > 50) {
         chunks.push(chunk);
       }
     }
@@ -114,25 +114,57 @@ export class AIQuestionGenerator {
     const questions: Question[] = [];
     let questionId = 1;
 
-    // Distribute questions across difficulty levels
-    const easyCount = Math.floor(questionCount * 0.4);
-    const mediumCount = Math.floor(questionCount * 0.4);
-    const hardCount = questionCount - easyCount - mediumCount;
+    // Calculate how many questions to generate from each chunk
+    const questionsPerChunk = Math.max(1, Math.floor(questionCount / Math.min(analyzedChunks.length, questionCount)));
+    const remainingQuestions = questionCount - (questionsPerChunk * Math.min(analyzedChunks.length, questionCount));
 
     // Generate questions from each chunk
-    for (const chunk of analyzedChunks) {
-      if (questions.length >= questionCount) break;
-
-      // Generate different types of questions based on chunk analysis
-      const chunkQuestions = await this.generateQuestionsFromChunk(chunk, questionId);
-      questions.push(...chunkQuestions);
+    let totalGenerated = 0;
+    for (let i = 0; i < analyzedChunks.length && totalGenerated < questionCount; i++) {
+      const chunk = analyzedChunks[i];
+      const questionsToGenerate = questionsPerChunk + (i < remainingQuestions ? 1 : 0);
+      
+      const chunkQuestions = await this.generateQuestionsFromChunk(chunk, questionId, questionsToGenerate);
+      questions.push(...chunkQuestions.slice(0, Math.min(questionsToGenerate, questionCount - totalGenerated)));
+      
       questionId += chunkQuestions.length;
+      totalGenerated += chunkQuestions.length;
     }
 
-    // Ensure we have the right distribution
-    const finalQuestions = this.balanceQuestionDifficulty(questions, easyCount, mediumCount, hardCount);
+    // If we still need more questions, generate additional ones from random chunks
+    while (questions.length < questionCount && analyzedChunks.length > 0) {
+      const randomChunk = analyzedChunks[Math.floor(Math.random() * analyzedChunks.length)];
+      const additionalQuestions = await this.generateQuestionsFromChunk(randomChunk, questionId, 1);
+      
+      if (additionalQuestions.length > 0) {
+        questions.push(additionalQuestions[0]);
+        questionId++;
+      } else {
+        break; // Prevent infinite loop
+      }
+    }
+
+    // Ensure we return exactly the requested number of questions
+    const finalQuestions = questions.slice(0, questionCount);
     
-    return finalQuestions.slice(0, questionCount);
+    // If we somehow have fewer questions, pad with generic ones
+    while (finalQuestions.length < questionCount) {
+      finalQuestions.push({
+        id: finalQuestions.length + 1,
+        question: `Based on the document content, what is a key point mentioned?`,
+        options: [
+          'The document provides valuable information on the topic',
+          'The document contains no relevant information',
+          'The document is entirely fictional',
+          'The document contradicts itself throughout'
+        ],
+        correctAnswer: 0,
+        explanation: 'This represents the general informative nature of the document.',
+        difficulty: 'easy'
+      });
+    }
+
+    return finalQuestions;
   }
 
   private async generateQuestionsFromChunk(
@@ -143,16 +175,17 @@ export class AIQuestionGenerator {
       facts: string[];
       difficulty: 'easy' | 'medium' | 'hard';
     },
-    startId: number
+    startId: number,
+    maxQuestions: number = 3
   ): Promise<Question[]> {
     const questions: Question[] = [];
 
     // Generate concept-based questions
-    if (chunk.concepts.length > 0) {
+    if (chunk.concepts.length > 0 && questions.length < maxQuestions) {
       const concept = chunk.concepts[0];
       questions.push({
-        id: startId,
-        question: `According to the document, what is the main concept related to "${concept}"?`,
+        id: startId + questions.length,
+        question: `According to the document, what is mentioned about "${concept}"?`,
         options: [
           this.generateConceptAnswer(concept, chunk.content),
           this.generateDistractor('concept'),
@@ -166,13 +199,13 @@ export class AIQuestionGenerator {
     }
 
     // Generate fact-based questions
-    if (chunk.facts.length > 0 && questions.length < 2) {
+    if (chunk.facts.length > 0 && questions.length < maxQuestions) {
       const fact = chunk.facts[0];
       questions.push({
         id: startId + questions.length,
         question: `What does the document state about this topic?`,
         options: [
-          fact,
+          fact.length > 80 ? fact.substring(0, 80) + '...' : fact,
           this.generateDistractor('fact'),
           this.generateDistractor('fact'),
           this.generateDistractor('fact')
@@ -183,8 +216,26 @@ export class AIQuestionGenerator {
       });
     }
 
+    // Generate key term questions
+    if (chunk.keyTerms.length > 0 && questions.length < maxQuestions) {
+      const keyTerm = chunk.keyTerms[0];
+      questions.push({
+        id: startId + questions.length,
+        question: `In the context of the document, what is significant about "${keyTerm}"?`,
+        options: [
+          `It is an important term mentioned in the document`,
+          `It is not mentioned in the document`,
+          `It contradicts the main theme`,
+          `It is only briefly referenced`
+        ],
+        correctAnswer: 0,
+        explanation: `"${keyTerm}" is identified as a key term in the document content.`,
+        difficulty: chunk.difficulty
+      });
+    }
+
     // Generate inference questions for harder difficulty
-    if (chunk.difficulty === 'hard' && questions.length < 3) {
+    if (chunk.difficulty === 'hard' && questions.length < maxQuestions) {
       questions.push({
         id: startId + questions.length,
         question: `Based on the information provided, what can be inferred?`,
@@ -200,6 +251,23 @@ export class AIQuestionGenerator {
       });
     }
 
+    // If we still need more questions, generate generic ones
+    while (questions.length < maxQuestions) {
+      questions.push({
+        id: startId + questions.length,
+        question: `What information is presented in this section of the document?`,
+        options: [
+          chunk.content.length > 100 ? chunk.content.substring(0, 100) + '...' : chunk.content,
+          'Information not found in the document',
+          'Contradictory information',
+          'Unrelated content'
+        ],
+        correctAnswer: 0,
+        explanation: 'This information is directly presented in the document.',
+        difficulty: chunk.difficulty
+      });
+    }
+
     return questions;
   }
 
@@ -209,13 +277,13 @@ You are an expert educational content creator. Using the RAG (Retrieval-Augmente
 
 1. RETRIEVE: Analyze the following document and identify key information
 2. AUGMENT: Enhance your understanding with educational best practices
-3. GENERATE: Create ${questionCount} high-quality multiple choice questions
+3. GENERATE: Create EXACTLY ${questionCount} high-quality multiple choice questions
 
 Document:
 ${text.substring(0, 4000)}...
 
 Requirements:
-- Generate exactly ${questionCount} questions
+- Generate EXACTLY ${questionCount} questions, no more, no less
 - Each question should have 4 options (A, B, C, D)
 - Include explanations for correct answers
 - Mix difficulty levels (40% easy, 40% medium, 20% hard)
@@ -305,35 +373,25 @@ Format your response as JSON:
       concept: [
         "A concept that sounds related but is not mentioned in the document",
         "A general idea that doesn't specifically relate to the content",
-        "A misconception that might arise from superficial reading"
+        "A misconception that might arise from superficial reading",
+        "An unrelated concept from a different field"
       ],
       fact: [
         "A statement that sounds factual but contradicts the document",
         "Information that is partially correct but missing key details",
-        "A fact from a different context that doesn't apply here"
+        "A fact from a different context that doesn't apply here",
+        "A common misconception about the topic"
       ],
       inference: [
         "A conclusion that goes beyond what the evidence supports",
         "An assumption that isn't backed by the provided information",
-        "A logical fallacy that might seem reasonable but is incorrect"
+        "A logical fallacy that might seem reasonable but is incorrect",
+        "An overgeneralization not supported by the text"
       ]
     };
     
     const options = distractors[type];
     return options[Math.floor(Math.random() * options.length)];
-  }
-
-  private balanceQuestionDifficulty(
-    questions: Question[],
-    easyCount: number,
-    mediumCount: number,
-    hardCount: number
-  ): Question[] {
-    const easy = questions.filter(q => q.difficulty === 'easy').slice(0, easyCount);
-    const medium = questions.filter(q => q.difficulty === 'medium').slice(0, mediumCount);
-    const hard = questions.filter(q => q.difficulty === 'hard').slice(0, hardCount);
-    
-    return [...easy, ...medium, ...hard];
   }
 
   // Placeholder methods for actual AI API calls

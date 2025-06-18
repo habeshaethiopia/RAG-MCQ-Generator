@@ -9,6 +9,8 @@ export interface Question {
 
 export type QuizState = 'upload' | 'quiz' | 'results';
 
+export type QuizMode = 'immediate' | 'end';
+
 export interface DocumentChunk {
   content: string;
   startIndex: number;
@@ -23,4 +25,9 @@ export interface RAGContext {
   chunks: DocumentChunk[];
   questionCount: number;
   difficulty: 'mixed' | 'easy' | 'medium' | 'hard';
+}
+
+export interface QuizSettings {
+  questionCount: number;
+  mode: QuizMode;
 }

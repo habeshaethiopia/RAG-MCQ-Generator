@@ -1,15 +1,19 @@
 import React, { useCallback, useState } from 'react';
-import { Upload, FileText, AlertCircle, Settings } from 'lucide-react';
+import { Upload, FileText, AlertCircle, Settings, Eye, Clock } from 'lucide-react';
+import type { QuizSettings } from '../types';
 
 interface FileUploadProps {
-  onFileUpload: (file: File, questionCount: number) => void;
+  onFileUpload: (file: File, settings: QuizSettings) => void;
   isProcessing: boolean;
 }
 
 const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload, isProcessing }) => {
   const [isDragOver, setIsDragOver] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [questionCount, setQuestionCount] = useState(15);
+  const [settings, setSettings] = useState<QuizSettings>({
+    questionCount: 15,
+    mode: 'immediate'
+  });
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -51,8 +55,8 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload, isProcessing }) =
       return;
     }
 
-    onFileUpload(file, questionCount);
-  }, [onFileUpload, questionCount]);
+    onFileUpload(file, settings);
+  }, [onFileUpload, settings]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -73,37 +77,85 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload, isProcessing }) =
 
   return (
     <div className="w-full max-w-2xl mx-auto">
-      {/* Question Count Selector */}
+      {/* Quiz Settings */}
       <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border border-gray-100">
-        <div className="flex items-center mb-4">
+        <div className="flex items-center mb-6">
           <Settings className="w-5 h-5 text-blue-600 mr-2" />
           <h3 className="text-lg font-semibold text-gray-800">Quiz Settings</h3>
         </div>
         
-        <div className="flex items-center space-x-4">
-          <label htmlFor="questionCount" className="text-sm font-medium text-gray-700">
-            Number of questions:
-          </label>
-          <div className="flex items-center space-x-2">
-            <input
-              type="range"
-              id="questionCount"
-              min="5"
-              max="30"
-              step="5"
-              value={questionCount}
-              onChange={(e) => setQuestionCount(parseInt(e.target.value))}
-              className="w-32 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-              disabled={isProcessing}
-            />
+        {/* Question Count */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <label htmlFor="questionCount" className="text-sm font-medium text-gray-700">
+              Number of questions:
+            </label>
             <div className="min-w-[3rem] px-3 py-1 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium text-center">
-              {questionCount}
+              {settings.questionCount}
             </div>
           </div>
+          <input
+            type="range"
+            id="questionCount"
+            min="5"
+            max="30"
+            step="5"
+            value={settings.questionCount}
+            onChange={(e) => setSettings(prev => ({ ...prev, questionCount: parseInt(e.target.value) }))}
+            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+            disabled={isProcessing}
+          />
+          <div className="flex justify-between text-xs text-gray-500 mt-1">
+            <span>5</span>
+            <span>15</span>
+            <span>30</span>
+          </div>
         </div>
-        
-        <div className="mt-2 text-xs text-gray-500">
-          Choose between 5-30 questions based on your document length
+
+        {/* Quiz Mode */}
+        <div>
+          <label className="text-sm font-medium text-gray-700 mb-3 block">
+            Quiz Mode:
+          </label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setSettings(prev => ({ ...prev, mode: 'immediate' }))}
+              disabled={isProcessing}
+              className={`p-4 rounded-lg border-2 transition-all duration-200 text-left ${
+                settings.mode === 'immediate'
+                  ? 'border-blue-500 bg-blue-50 text-blue-700'
+                  : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+              }`}
+            >
+              <div className="flex items-center mb-2">
+                <Eye className="w-5 h-5 mr-2" />
+                <span className="font-medium">Immediate Feedback</span>
+              </div>
+              <p className="text-sm opacity-80">
+                See results and explanations after each question
+              </p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSettings(prev => ({ ...prev, mode: 'end' }))}
+              disabled={isProcessing}
+              className={`p-4 rounded-lg border-2 transition-all duration-200 text-left ${
+                settings.mode === 'end'
+                  ? 'border-blue-500 bg-blue-50 text-blue-700'
+                  : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+              }`}
+            >
+              <div className="flex items-center mb-2">
+                <Clock className="w-5 h-5 mr-2" />
+                <span className="font-medium">End Review</span>
+              </div>
+              <p className="text-sm opacity-80">
+                Complete all questions, then review results
+              </p>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -125,7 +177,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload, isProcessing }) =
               Processing Document...
             </h3>
             <p className="text-gray-500">
-              Analyzing content and generating {questionCount} questions
+              Analyzing content and generating exactly {settings.questionCount} questions
             </p>
           </div>
         ) : (
