@@ -21,15 +21,19 @@ const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
 }) => {
   const [showFeedback, setShowFeedback] = useState(false);
   const [canProceed, setCanProceed] = useState(false);
+  const [currentAnswer, setCurrentAnswer] = useState<number | undefined>(undefined);
   const progress = (questionNumber / totalQuestions) * 100;
 
   useEffect(() => {
     setShowFeedback(false);
     setCanProceed(false);
+    setCurrentAnswer(undefined);
   }, [question.id]);
 
   const handleAnswerClick = (answerIndex: number) => {
-    if (selectedAnswer !== undefined) return;
+    if (currentAnswer !== undefined) return;
+    
+    setCurrentAnswer(answerIndex);
     
     if (mode === 'immediate') {
       setShowFeedback(true);
@@ -43,8 +47,8 @@ const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
   };
 
   const handleNext = () => {
-    if (canProceed && selectedAnswer !== undefined) {
-      onAnswer(selectedAnswer);
+    if (currentAnswer !== undefined) {
+      onAnswer(currentAnswer);
     }
   };
 
@@ -126,7 +130,7 @@ const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
             {/* Answer Options */}
             <div className="space-y-3">
               {question.options.map((option, index) => {
-                const isSelected = selectedAnswer === index;
+                const isSelected = currentAnswer === index;
                 const isCorrect = index === question.correctAnswer;
                 const showResult = showFeedback && mode === 'immediate';
                 
@@ -152,7 +156,7 @@ const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
                   <button
                     key={index}
                     onClick={() => handleAnswerClick(index)}
-                    disabled={showResult || (selectedAnswer !== undefined && mode === 'end')}
+                    disabled={showResult || (currentAnswer !== undefined && mode === 'end')}
                     className={buttonClass}
                   >
                     <div className="flex items-center">
@@ -187,7 +191,7 @@ const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
             )}
 
             {/* Next Button for Immediate Mode */}
-            {mode === 'immediate' && canProceed && (
+            {mode === 'immediate' && canProceed && currentAnswer !== undefined && (
               <div className="mt-6 text-center">
                 <button
                   onClick={handleNext}
@@ -200,7 +204,7 @@ const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
             )}
 
             {/* Auto-proceed message for End Mode */}
-            {mode === 'end' && selectedAnswer !== undefined && (
+            {mode === 'end' && currentAnswer !== undefined && (
               <div className="mt-6 text-center">
                 <div className="inline-flex items-center px-4 py-2 bg-green-50 text-green-700 rounded-lg border border-green-200">
                   <CheckCircle className="w-4 h-4 mr-2" />
